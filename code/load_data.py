@@ -2,7 +2,7 @@ import numpy as np
 
 
 def load(dataset):
-  dataset = 20
+  dataset = int(dataset)
   
   with np.load("../data/Encoders%d.npz"%dataset) as data:
     encoder_counts = data["counts"] # 4 x n encoder counts

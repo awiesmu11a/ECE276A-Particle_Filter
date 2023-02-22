@@ -9,7 +9,8 @@ if __name__ == "__main__":
     enc_data = encoder["counts"]
     enc_ts = encoder["timestamps"]
 
-    print(enc_data)
+    for i in range(enc_data.shape[1]):
+        print("Encoder: %d" % (enc_data[0, i]))
 
     
 
