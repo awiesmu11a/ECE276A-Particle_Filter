@@ -1,7 +1,7 @@
 import numpy as np
 
 
-if __name__ == '__main__':
+def load(dataset):
   dataset = 20
   
   with np.load("../data/Encoders%d.npz"%dataset) as data:
@@ -15,7 +15,7 @@ if __name__ == '__main__':
     lidar_range_min = data["range_min"] # minimum range value [m]
     lidar_range_max = data["range_max"] # maximum range value [m]
     lidar_ranges = data["ranges"]       # range data [m] (Note: values < range_min or > range_max should be discarded)
-    lidar_stamsp = data["time_stamps"]  # acquisition times of the lidar scans
+    lidar_stamps = data["time_stamps"]  # acquisition times of the lidar scans
     
   with np.load("../data/Imu%d.npz"%dataset) as data:
     imu_angular_velocity = data["angular_velocity"] # angular velocity in rad/sec
@@ -25,4 +25,24 @@ if __name__ == '__main__':
   with np.load("../data/Kinect%d.npz"%dataset) as data:
     disp_stamps = data["disparity_time_stamps"] # acquisition times of the disparity images
     rgb_stamps = data["rgb_time_stamps"] # acquisition times of the rgb images
+
+  encoder = {"counts": encoder_counts, "timestamps": encoder_stamps}
+  lidar = {
+    "angle_min": lidar_angle_min, 
+    "angle_max": lidar_angle_max, 
+    "angle_increment": lidar_angle_increment, 
+    "range": lidar_ranges, 
+    "timestamps": lidar_stamps, 
+    "range_min": lidar_range_min, 
+    "range_max": lidar_range_max
+    }
+  imu = {
+    "angular_velocity": imu_angular_velocity, 
+    "linear_acceleration": imu_linear_acceleration, 
+    "timestamps": imu_stamps
+    }
+  kinect = {"disparity_timestamps": disp_stamps, "rgb_timestamps": rgb_stamps}
+
+  return encoder, lidar, imu, kinect
+
 
