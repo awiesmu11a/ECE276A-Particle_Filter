@@ -1,5 +1,5 @@
 import numpy as np
-import matplotlib.pyplot as plt; plt.ion()
+import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 import time
 
@@ -186,7 +186,7 @@ def test_mapCorrelation():
   
   #plot correlation
   fig3 = plt.figure()
-  ax3 = fig3.gca(projection='3d')
+  ax3 = fig3.add_subplot(projection='3d')
   X, Y = np.meshgrid(np.arange(0,9), np.arange(0,9))
   ax3.plot_surface(X,Y,c,linewidth=0,cmap=plt.cm.jet, antialiased=False,rstride=1, cstride=1)
   plt.title("Correlation coefficient map")  
@@ -204,7 +204,7 @@ def show_lidar():
   ax.set_rlabel_position(-22.5)  # get radial labels away from plotted line
   ax.grid(True)
   ax.set_title("Lidar scan data", va='bottom')
-  plt.show()
+  plt.show
 	
 
 if __name__ == '__main__':
