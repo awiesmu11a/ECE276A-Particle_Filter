@@ -3,6 +3,26 @@ import matplotlib.pyplot as plt
 import math
 from pr2_utils import bresenham2D
 
+def synchronize_data(encoder, imu, v_enc, w_imu):
+
+    v = []
+    w = []
+    j = 0
+
+    for i in range(w_imu.shape[0]):
+        if abs(imu["timestamps"][i] - encoder["timestamps"][j]) <= 0.01:
+            w.append(w_imu[i])
+            v.append(v_enc[j])
+            j += 1
+
+        if encoder["timestamps"][j] < imu["timestamps"][i]:
+            j += 1
+    
+    w = np.array(w)
+    v = np.array(v)
+
+    return v, w
+
 def motion_model(v, w):
     pose = [0, 0, 0]
     states = []
