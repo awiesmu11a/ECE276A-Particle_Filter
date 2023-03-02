@@ -3,11 +3,26 @@ import matplotlib.pyplot as plt
 import math
 from pr2_utils import bresenham2D
 
+def hp_filter(arr, alpha = 0.06):
+    fil_arr = [arr[0]]
+    for i in range(arr.shape[0]):
+        if i==0:
+            continue
+        fil_arr.append(alpha*fil_arr[-1]+(1-alpha)*(arr[i]-arr[i-1]))
+    return np.array(fil_arr)
+
+def lp_filter(arr, alpha = 0.1):
+    fil_arr = [arr[0]]
+    for a in arr[1:]:
+        fil_arr.append(alpha*a+(1-alpha)*fil_arr[-1])
+    return np.array(fil_arr)
+
 def synchronize_data(encoder, imu, v_enc, w_imu):
 
     v = []
     w = []
     j = 0
+    w_imu = lp_filter(w_imu)
 
     for i in range(w_imu.shape[0]):
         if abs(imu["timestamps"][i] - encoder["timestamps"][j]) <= 0.01:

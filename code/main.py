@@ -18,7 +18,7 @@ if __name__ == "__main__":
     v, w = synchronize_data(encoder, imu, v_enc, w_imu)
 
     res = 0.1
-    xmin = -30   
+    xmin = -30  
     xmax = 30
     ymin = -30
     ymax = 30
@@ -26,7 +26,7 @@ if __name__ == "__main__":
     sizey = int(np.ceil((ymax - ymin) / res + 1))
     map = np.zeros((sizex, sizey), dtype = np.int8)
 
-    N = 10
+    N = 5
 
     particles = np.zeros((N, 3))
     weights = np.ones(N) / N
@@ -39,7 +39,12 @@ if __name__ == "__main__":
     #plt.show()
 
     map_temp = dead_reckon(lidar, v, w, map, res, xmin, xmax, ymin, ymax)
+    fig = plt.figure()
     plt.imshow(map_temp, cmap="gray")
-    plt.show()
+    #plt.show()
 
-    #occupancy_map = particle_filter(lidar, v, w, particles, weights, map, res, xmin, xmax, ymin, ymax, N)    
+    particles, weights, occupancy_map = particle_filter(lidar, v, w, particles, weights, map, res, xmin, xmax, ymin, ymax, N)    
+    
+    fig2 = plt.figure()
+    plt.imshow(occupancy_map, cmap="gray")
+    plt.show()
