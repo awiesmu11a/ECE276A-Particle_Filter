@@ -2,6 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 import time
+import numba
 
 def tic():
   return time.time()
@@ -41,7 +42,6 @@ def mapCorrelation(im, x_im, y_im, vp, xs, ys):
                               np.logical_and((ix >=0), (ix < nx)))
       cpr[jx,jy] = np.sum(im[ix[valid],iy[valid]])
   return cpr
-
 
 def bresenham2D(sx, sy, ex, ey):
   '''

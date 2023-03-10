@@ -3,13 +3,6 @@ import matplotlib.pyplot as plt
 import math
 from pr2_utils import bresenham2D
 
-def hp_filter(arr, alpha = 0.06):
-    fil_arr = [arr[0]]
-    for i in range(arr.shape[0]):
-        if i==0:
-            continue
-        fil_arr.append(alpha*fil_arr[-1]+(1-alpha)*(arr[i]-arr[i-1]))
-    return np.array(fil_arr)
 
 def lp_filter(arr, alpha = 0.1):
     fil_arr = [arr[0]]
@@ -17,10 +10,47 @@ def lp_filter(arr, alpha = 0.1):
         fil_arr.append(alpha*a+(1-alpha)*fil_arr[-1])
     return np.array(fil_arr)
 
+def synchronize_lidar(lidar, v, w, ts):
+    
+    i = 0
+    j = 0
+    ranges = []
+    v_temp = []
+    w_temp = []
+    ts_new = []
+
+    while (i < ts.shape[0]) and (j < lidar["range"].shape[1]):
+        if abs(lidar["timestamps"][j] - ts[i]) < 0.2:
+            ranges.append(lidar["range"][:, j])
+            v_temp.append(v[i])
+            w_temp.append(w[i])
+            ts_new.append(ts[i])
+            i += 1
+            j += 1
+        elif lidar["timestamps"][j] > ts[i]:
+            i += 1
+        elif lidar["timestamps"][j] < ts[i]:
+            j += 1
+    
+    timestep = 0
+    for i in range(len(ts_new)):
+        if i == 0:
+            continue
+        timestep += ts_new[i] - ts_new[i-1]
+    
+    timestep = timestep / len(ts_new)
+    print("Timestep: ", timestep)  
+    ranges = np.array(ranges)
+    v_temp = np.array(v_temp)
+    w_temp = np.array(w_temp)
+    ts_new = np.array(ts_new)
+    return ranges, v_temp, w_temp, ts_new
+
 def synchronize_data(encoder, imu, v_enc, w_imu):
 
     v = []
     w = []
+    ts = []
     j = 0
     w_imu = lp_filter(w_imu)
 
@@ -28,6 +58,7 @@ def synchronize_data(encoder, imu, v_enc, w_imu):
         if abs(imu["timestamps"][i] - encoder["timestamps"][j]) <= 0.01:
             w.append(w_imu[i])
             v.append(v_enc[j])
+            ts.append(imu["timestamps"][i])
             j += 1
 
         if encoder["timestamps"][j] < imu["timestamps"][i]:
@@ -35,10 +66,11 @@ def synchronize_data(encoder, imu, v_enc, w_imu):
     
     w = np.array(w)
     v = np.array(v)
+    ts = np.array(ts)
 
-    return v, w
+    return v, w, ts
 
-def motion_model(v, w):
+def motion_model(v, w, time):
     pose = [0, 0, 0]
     states = []
     states.append(pose)
@@ -46,9 +78,9 @@ def motion_model(v, w):
     y = []
     theta = []
     for i in range(v.shape[0]):
-        pose[0] += v[i] * np.cos(pose[2]) * 0.025
-        pose[1] += v[i] * np.sin(pose[2]) * 0.025
-        pose[2] += w[i] * 0.025
+        pose[0] += v[i] * np.cos(pose[2]) * time
+        pose[1] += v[i] * np.sin(pose[2]) * time
+        pose[2] += w[i] * time
         x.append(pose[0])
         y.append(pose[1])
         theta.append(pose[2])
@@ -60,74 +92,6 @@ def motion_model(v, w):
 
     return x, y, theta, states
 
-def lidar_occupancy(lidar, pose, map):
-    lidar_theta = np.zeros(lidar["range"].shape[0])
-    lidar_theta[0] = lidar["angle_min"]
-    for i in range(1, lidar["range"].shape[0]):
-        lidar_theta[i] = lidar_theta[i-1] + lidar["angle_increment"][0][0]
-    
-    x_lidar = []
-    y_lidar = []
-
-    for i in range(pose.shape[0]):
-        theta_temp = pose[i][2] + lidar_theta
-        lidar_range_x = (lidar["range"][:, i] * np.cos(theta_temp))
-        lidar_range_y = (lidar["range"][:, i] * np.sin(theta_temp))
-        lidar_range_x = lidar_range_x[(lidar_range_x > 0.1) | (lidar_range_x < 30)]
-        lidar_range_y = lidar_range_y[(lidar_range_y > 0.1) | (lidar_range_y < 30)]
-        x_temp = np.array(pose[i][0] + lidar_range_x)
-        y_temp = np.array(pose[i][1] + lidar_range_y)
-        x_lidar.append(x_temp)
-        y_lidar.append(y_temp)
-    br = np.zeros((1, 2))
-    x_lidar = np.array(x_lidar)
-    y_lidar = np.array(y_lidar)
-    x_lidar = x_lidar.reshape(x_lidar.shape[0] * x_lidar.shape[1])
-    y_lidar = y_lidar.reshape(y_lidar.shape[0] * y_lidar.shape[1])
-    for i in range(1081):
-        br = np.concatenate((br, bresenham2D(pose[int(i / 1080)][0], pose[int(i / 1080)][1], x_lidar[i], y_lidar[i]).T), axis=0)
-        print(i)
-    
-    br = br[1:, :]
-    br = br.astype(int)
-    for i in range(br.shape[0]):
-        map[34 - br[i][0], 34 - br[i][1]] = 0
-    return pose[:,0], pose[:,1], map  
-
-
-def lidar_test_path(lidar, x_imu, y_imu, theta_imu, freq_match, reshape):
-    lidar_theta = np.zeros(lidar["range"].shape[0])
-    lidar_theta[0] = lidar["angle_min"]
-    for i in range(1, lidar["range"].shape[0]):
-        lidar_theta[i] = lidar_theta[i-1] + lidar["angle_increment"][0][0]
-    
-    x_lidar = []
-    y_lidar = []
-
-    for i in range(lidar["range"].shape[1]):
-        if freq_match * i >= x_imu.shape[0]:
-            break            
-        theta_temp = theta_imu[freq_match * i] + lidar_theta
-        lidar_range_x = (lidar["range"][:, i] * np.cos(theta_temp))
-        lidar_range_y = (lidar["range"][:, i] * np.sin(theta_temp))
-        lidar_range_x = lidar_range_x[(lidar_range_x > 0.1) | (lidar_range_x < 30)]
-        lidar_range_y = lidar_range_y[(lidar_range_y > 0.1) | (lidar_range_y < 30)]
-        x_temp = x_imu[freq_match * i] + lidar_range_x
-        y_temp = y_imu[freq_match * i] + lidar_range_y
-        x_lidar.append(x_temp)
-        y_lidar.append(y_temp)
-    
-    x_lidar = np.array(x_lidar)
-    y_lidar = np.array(y_lidar)
-    
-    if reshape:
-        x_lidar = x_lidar.reshape(x_lidar.shape[0] * x_lidar.shape[1])
-        y_lidar = y_lidar.reshape(y_lidar.shape[0] * y_lidar.shape[1])
-    map = np.zeros((100, 450))
-    #for i in range(x_lidar.shape[0]):
-        #map[int(y_lidar[i] / 100) - 80, int(x_lidar[i] / 100)] = 1
-
-    return x_lidar, y_lidar, map
 
 def imu_test(imu):
     a_imu = imu["linear_acceleration"]
